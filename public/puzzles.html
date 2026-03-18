@@ -221,6 +221,60 @@ font-size:14px;
 .moves{
 height:140px;
 }
+/* SMOOTH PIECE ANIMATION */
+.square img{
+transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+/* LEGAL MOVE DOTS */
+.move-dot{
+width:14px;
+height:14px;
+background:rgba(0,0,0,0.35);
+border-radius:50%;
+position:absolute;
+}
+
+/* CAPTURE DOT (ring) */
+.capture-dot{
+width:100%;
+height:100%;
+border:4px solid rgba(0,0,0,0.35);
+border-radius:50%;
+position:absolute;
+}
+
+/* allow stacking */
+.square{
+position:relative;
+}
+/* SNAP ANIMATION SUPPORT */
+.square img{
+transition: transform 0.18s ease;
+}
+
+/* MOVE DOT */
+.move-dot{
+width:14px;
+height:14px;
+background:rgba(0,0,0,0.35);
+border-radius:50%;
+position:absolute;
+}
+
+/* CAPTURE RING */
+.capture-dot{
+width:100%;
+height:100%;
+border:4px solid rgba(0,0,0,0.35);
+border-radius:50%;
+position:absolute;
+}
+
+/* allow overlay */
+.square{
+position:relative;
+}
 
 }
 </style>
@@ -408,8 +462,33 @@ square.appendChild(img)
 
 }
 
+/* LEGAL MOVE DOTS */
+if(selected){
+
+let moves = game.moves({
+square:selected,
+verbose:true
+})
+
+moves.forEach(m=>{
+if(m.to===coord){
+
+if(m.captured){
+let ring=document.createElement("div")
+ring.className="capture-dot"
+square.appendChild(ring)
+}else{
+let dot=document.createElement("div")
+dot.className="move-dot"
+square.appendChild(dot)
+}
+
+}
+})
+
+}
+
 if(selected===coord) square.classList.add("selected")
-if(legalMoves.includes(coord)) square.classList.add("highlight")
 
 square.onclick=handleClick
 
@@ -440,30 +519,45 @@ return
 
 }
 
-/* switch piece instantly */
-
 if(piece && piece.color===game.turn()){
 selectPiece(square)
 return
 }
 
-/* promotion detection */
+/* SNAP ANIMATION */
+let fromEl=[...document.querySelectorAll(".square")]
+.find(s=>s.dataset.square===selected)
 
-let selectedPiece=game.get(selected)
+let toEl=[...document.querySelectorAll(".square")]
+.find(s=>s.dataset.square===square)
 
-if(selectedPiece.type==="p" && (square[1]==="8" || square[1]==="1")){
+let img=fromEl?.querySelector("img")
 
-pendingPromotion={from:selected,to:square}
+if(img && toEl){
+let clone=img.cloneNode(true)
 
-showPromotionPopup(selectedPiece.color)
+let r1=img.getBoundingClientRect()
+let r2=toEl.getBoundingClientRect()
 
-selected=null
-legalMoves=[]
+clone.style.position="fixed"
+clone.style.left=r1.left+"px"
+clone.style.top=r1.top+"px"
+clone.style.width=r1.width+"px"
+clone.style.height=r1.height+"px"
+clone.style.transition="all 0.18s ease"
+clone.style.zIndex=9999
 
-drawBoard()
+document.body.appendChild(clone)
 
-return
+requestAnimationFrame(()=>{
+clone.style.left=r2.left+"px"
+clone.style.top=r2.top+"px"
+})
+
+setTimeout(()=>clone.remove(),180)
 }
+
+/* ORIGINAL MOVE */
 
 let move=game.move({
 from:selected,
@@ -566,8 +660,6 @@ if(!stockfish || game.turn() !== aiColor || gameOver) return
 aiThinking = true
 thinkingEl.textContent = "AI thinking..."
 
-/* 40% chance to play random move (makes AI weak) */
-
 if(Math.random() < 0.4){
 
 let moves = game.moves({verbose:true})
@@ -587,8 +679,6 @@ updateStatus()
 return
 
 }
-
-/* otherwise use very shallow engine */
 
 stockfish.postMessage("position fen " + game.fen())
 stockfish.postMessage("go depth 2")
@@ -738,8 +828,6 @@ function exportPGN(){
 
 navigator.clipboard.writeText(game.pgn())
 
-alert("PGN copied!")
-
 }
 
 function endGame(text){
@@ -782,7 +870,6 @@ document.getElementById("winMessage").style.display="none"
 /* INIT */
 
 initStockfish()
-
 drawBoard()
 updateClock()
 updateStatus()
