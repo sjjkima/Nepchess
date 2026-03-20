@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NepChess | Local Setup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            --accent-green: #2ecc71;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --text-gray: #b0b0b0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-gradient);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .setup-card {
+            width: 90%;
+            max-width: 550px;
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 30px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        }
+
+        .logo { font-size: 24px; font-weight: 900; color: var(--accent-green); margin-bottom: 10px; }
+        .logo span { color: white; }
+
+        h2 { font-size: 32px; margin-bottom: 30px; }
+
+        .section-title {
+            text-align: left;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-gray);
+            margin-bottom: 15px;
+        }
+
+        /* Mode Selection Grid */
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .opt-btn {
+            background: rgba(255,255,255,0.03);
+            border: 2px solid transparent;
+            padding: 15px;
+            border-radius: 15px;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 600;
+        }
+
+        .opt-btn:hover { background: rgba(255,255,255,0.08); }
+
+        .opt-btn.selected {
+            border-color: var(--accent-green);
+            background: rgba(46, 204, 113, 0.15);
+        }
+
+        /* Color Selection */
+        .color-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .color-btn {
+            flex: 1;
+            padding: 20px;
+            border-radius: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: 0.2s;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .color-btn.white-choice { color: #fff; }
+        .color-btn.black-choice { color: #555; }
+        .color-btn.random-choice { color: var(--accent-green); }
+
+        .color-btn.selected { border-color: var(--accent-green); background: rgba(255,255,255,0.1); }
+
+        /* Start Button */
+        .start-btn {
+            width: 100%;
+            background: var(--accent-green);
+            color: #0f0f23;
+            padding: 20px;
+            border-radius: 40px;
+            font-size: 20px;
+            font-weight: 800;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(46, 204, 113, 0.3);
+            transition: 0.3s;
+        }
+
+        .start-btn:hover { transform: translateY(-3px); box-shadow: 0 15px 40px rgba(46, 204, 113, 0.5); }
+
+        .back-link {
+            display: block;
+            margin-top: 20px;
+            color: var(--text-gray);
+            text-decoration: none;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="setup-card">
+        <div class="logo"><span>♟</span> NepChess</div>
+        <h2>Local Match</h2>
+
+        <div class="section-title">Time Control</div>
+        <div class="options-grid">
+            <button class="opt-btn selected" onclick="selectTime('10 min', this)">10 min</button>
+            <button class="opt-btn" onclick="selectTime('5 min', this)">5 min</button>
+            <button class="opt-btn" onclick="selectTime('1 min', this)">1 min</button>
+            <button class="opt-btn" onclick="selectTime('30 min', this)">30 min</button>
+            <button class="opt-btn" onclick="selectTime('Unlimited', this)">∞ No Limit</button>
+            <button class="opt-btn" onclick="selectTime('Custom', this)">Custom</button>
+        </div>
+
+        <div class="section-title">I Play As</div>
+        <div class="color-row">
+            <button class="color-btn white-choice selected" onclick="selectColor('white', this)">♔</button>
+            <button class="color-btn random-choice" onclick="selectColor('random', this)">🌓</button>
+            <button class="color-btn black-choice" onclick="selectColor('black', this)">♚</button>
+        </div>
+
+        <button class="start-btn" onclick="startGame()">START GAME</button>
+        
+        <a href="index.html" class="back-link">← Return to Lobby</a>
+    </div>
+
+    <script>
+        let selectedTime = "10 min";
+        let selectedColor = "white";
+
+        function selectTime(time, btn) {
+            selectedTime = time;
+            document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        }
+
+        function selectColor(color, btn) {
+            selectedColor = color;
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        }
+
+        function startGame() {
+            // Here you would normally pass these variables to the game board
+            alert(`Starting Local Game!\nTime: ${selectedTime}\nYour Side: ${selectedColor}`);
+            // window.location.href = "board.html"; // Redirect to actual board
+        }
+    </script>
+</body>
+</html>

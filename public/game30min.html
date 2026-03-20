@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NepChess | Pro Interactive</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    
+    <style>
+        :root {
+            --accent: #2ecc71; --danger: #e74c3c; --warning: #f39c12;
+            --light-sq: #ebecd0; --dark-sq: #779556;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: radial-gradient(circle at center, #1a1a3a, #050510);
+            color: white; height: 100vh; display: flex; overflow: hidden;
+        }
+
+        nav { width: 70px; background: rgba(0,0,0,0.5); border-right: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; padding: 20px 0; }
+        .back-btn { width: 45px; height: 45px; background: rgba(255,255,255,0.05); border-radius: 10px; display: flex; justify-content: center; align-items: center; color: var(--accent); text-decoration: none; font-weight: 900; transition: 0.2s; }
+        .back-btn:hover { background: var(--accent); color: #000; }
+
+        main { flex: 1; display: flex; justify-content: center; align-items: center; gap: 25px; padding: 20px; }
+
+        /* --- BOARD --- */
+        .chessboard {
+            width: min(85vw, 540px); height: min(85vw, 540px);
+            display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+            border: 8px solid #222; border-radius: 8px; position: relative;
+        }
+        .square { display: flex; justify-content: center; align-items: center; cursor: pointer; position: relative; transition: background 0.2s; }
+        .light { background: var(--light-sq); }
+        .dark { background: var(--dark-sq); }
+        .square img { width: 90%; height: 90%; z-index: 2; transition: transform 0.1s; }
+        .square:active img { transform: scale(1.15); }
+
+        /* Highlights */
+        .selected { background: rgba(255, 255, 0, 0.5) !important; }
+        .highlight::after { content: ""; width: 16px; height: 16px; background: rgba(0,0,0,0.15); border-radius: 50%; }
+        .last-move { background: rgba(255, 255, 0, 0.3) !important; }
+        .check-sq { background: #ff7675 !important; box-shadow: inset 0 0 25px #d63031; animation: pulse 0.6s infinite alternate; }
+
+        @keyframes pulse { from { opacity: 1; } to { opacity: 0.6; } }
+
+        /* --- SIDE PANEL --- */
+        .panel { width: 320px; height: min(90vh, 600px); display: flex; flex-direction: column; background: rgba(255,255,255,0.03); border-radius: 20px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); }
+        .timer { font-size: 38px; font-family: monospace; text-align: center; background: #000; border-radius: 10px; padding: 8px; margin: 5px 0; border: 2px solid transparent; transition: 0.3s; }
+        .timer.active { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 15px rgba(46, 204, 113, 0.2); }
+
+        .move-container { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 10px; margin: 15px 0; padding: 5px; border: 1px solid rgba(255,255,255,0.05); }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { text-align: left; padding: 10px; color: #777; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+        td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.02); }
+        .move-num { color: #555; font-weight: 900; }
+
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { border: none; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; background: #333; color: white; transition: 0.2s; }
+        button:hover { background: #444; transform: translateY(-2px); }
+        .btn-resign { background: var(--danger); }
+        .btn-confirm { background: var(--warning) !important; color: #000; animation: pulse 0.4s infinite alternate; }
+
+        /* --- NOTIFICATIONS --- */
+        #game-over { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000;
+            backdrop-filter: blur(8px);
+        }
+        .notif-card {
+            background: #1a1a1a; padding: 50px; border-radius: 30px; text-align: center;
+            border: 3px solid var(--accent); box-shadow: 0 0 50px rgba(46, 204, 113, 0.3);
+            transform: scale(0.9); transition: 0.3s;
+        }
+        .notif-card h1 { font-size: 42px; margin-bottom: 10px; color: var(--accent); font-weight: 900; }
+        .notif-card p { color: #888; margin-bottom: 30px; font-size: 18px; }
+
+        #promo-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; z-index:100; grid-template-columns:repeat(2,1fr); gap:15px; padding:20%; }
+        .promo-box { background:#333; border:2px solid var(--accent); border-radius:12px; cursor:pointer; display:flex; justify-content:center; align-items:center; }
+    </style>
+</head>
+<body>
+
+    <nav><a href="#" class="back-btn">←</a></nav>
+
+    <main>
+        <div id="board" class="chessboard"><div id="promo-overlay"></div></div>
+
+        <div class="panel">
+            <div id="t-b" class="timer">10:00</div>
+            <div class="move-container">
+                <table>
+                    <thead><tr><th style="width:40px">#</th><th>WHITE</th><th>BLACK</th></tr></thead>
+                    <tbody id="move-list"></tbody>
+                </table>
+            </div>
+            <div id="t-w" class="timer active">10:00</div>
+            <div class="controls">
+                <button onclick="game.undo(); lastMove=[]; render();">Undo</button>
+                <button onclick="isFlipped=!isFlipped; render();">Flip</button>
+                <button id="drawBtn" onclick="reqDraw()">Draw</button>
+                <button id="resignBtn" class="btn-resign" onclick="reqResign()">Resign</button>
+            </div>
+        </div>
+    </main>
+
+    <div id="game-over">
+        <div class="notif-card">
+            <h1 id="status">CHECKMATE</h1>
+            <p id="winner">White Wins</p>
+            <button onclick="location.reload()" style="background:var(--accent); color:black; padding: 15px 40px; font-size: 18px; border-radius: 50px;">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        const game = new Chess();
+        const boardEl = document.getElementById('board');
+        const s_move = new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/move-self.mp3');
+        const s_cap = new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/capture.mp3');
+        const s_end = new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/game-end.mp3');
+
+        let selected = null, legal = [], isFlipped = false, timers = {w:600, b:600}, interval = null, lastMove = [];
+        let confirmR = false, confirmD = false;
+
+        const pieces = {
+            wp: "https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg", wr: "https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.svg",
+            wn: "https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg", wb: "https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg",
+            wq: "https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg", wk: "https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg",
+            bp: "https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.svg", br: "https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.svg",
+            bn: "https://upload.wikimedia.org/wikipedia/commons/e/ef/Chess_ndt45.svg", bb: "https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg",
+            bq: "https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg", bk: "https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg"
+        };
+
+        function render() {
+            [...boardEl.children].forEach(c => { if(c.id !== 'promo-overlay') c.remove(); });
+            let rks = isFlipped ? [1,2,3,4,5,6,7,8] : [8,7,6,5,4,3,2,1];
+            let fls = isFlipped ? ['h','g','f','e','d','c','b','a'] : ['a','b','c','d','e','f','g','h'];
+
+            rks.forEach(r => fls.forEach(f => {
+                const c = f+r;
+                const sq = document.createElement('div');
+                sq.className = `square ${(rks.indexOf(r)+fls.indexOf(f))%2===0?'light':'dark'}`;
+                if(selected === c) sq.classList.add('selected');
+                if(legal.includes(c)) sq.classList.add('highlight');
+                if(lastMove.includes(c)) sq.classList.add('last-move');
+                
+                const p = game.get(c);
+                if(p) {
+                    const img = document.createElement('img');
+                    img.src = pieces[p.color+p.type];
+                    sq.appendChild(img);
+                    if(p.type==='k' && game.in_check() && p.color===game.turn()) sq.classList.add('check-sq');
+                }
+                sq.onclick = () => handleInput(c);
+                boardEl.appendChild(sq);
+            }));
+            updateUI();
+        }
+
+        function handleInput(c) {
+            resetBtns();
+            if(selected === null) {
+                const p = game.get(c);
+                if(p && p.color === game.turn()) {
+                    selected = c, legal = game.moves({square:c, verbose:true}).map(m=>m.to);
+                }
+            } else {
+                const p = game.get(selected);
+                if(p.type==='p' && (c[1]==='8'||c[1]==='1') && legal.includes(c)) showPromo(selected, c);
+                else makeMove(selected, c);
+                selected = null; legal = [];
+            }
+            render();
+        }
+
+        function makeMove(from, to, promotion = 'q') {
+            const m = game.move({from, to, promotion});
+            if(m) {
+                lastMove = [from, to];
+                m.captured ? s_cap.play() : s_move.play();
+                if(!interval) interval = setInterval(() => { timers[game.turn()]--; updateUI(); }, 1000);
+            }
+            render();
+        }
+
+        function showPromo(from, to) {
+            const ov = document.getElementById('promo-overlay');
+            ov.innerHTML = ''; ov.style.display = 'grid';
+            ['q','r','n','b'].forEach(t => {
+                const b = document.createElement('div'); b.className = 'promo-box';
+                b.innerHTML = `<img src="${pieces[game.turn()+t]}" style="width:80%">`;
+                b.onclick = () => { ov.style.display = 'none'; makeMove(from, to, t); };
+                ov.appendChild(b);
+            });
+        }
+
+        function updateUI() {
+            const f = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+            document.getElementById('t-w').innerText = f(timers.w);
+            document.getElementById('t-b').innerText = f(timers.b);
+            document.getElementById('t-w').classList.toggle('active', game.turn()==='w');
+            document.getElementById('t-b').classList.toggle('active', game.turn()==='b');
+            
+            const moveList = document.getElementById('move-list');
+            moveList.innerHTML = '';
+            const history = game.history();
+            for (let i = 0; i < history.length; i += 2) {
+                moveList.innerHTML += `<tr><td class="move-num">${Math.floor(i/2)+1}</td><td>${history[i]}</td><td>${history[i+1]||''}</td></tr>`;
+            }
+            document.querySelector('.move-container').scrollTop = 9999;
+
+            // Check for Checkmate or Game Over
+            if(game.game_over()) {
+                clearInterval(interval);
+                s_end.play();
+                document.getElementById('game-over').style.display = 'flex';
+                if(game.in_checkmate()) {
+                    document.getElementById('status').innerText = "CHECKMATE";
+                    document.getElementById('winner').innerText = game.turn() === 'w' ? "Black Wins" : "White Wins";
+                } else {
+                    document.getElementById('status').innerText = "DRAW";
+                    document.getElementById('winner').innerText = "Stalemate / Insufficient Material";
+                }
+            }
+        }
+
+        function reqResign() {
+            const b = document.getElementById('resignBtn');
+            if(!confirmR) { resetBtns(); confirmR = true; b.innerText = "Sure?"; b.classList.add('btn-confirm'); }
+            else showEnd("RESIGNED", game.turn() === 'w' ? "Black Wins" : "White Wins");
+        }
+
+        function reqDraw() {
+            const b = document.getElementById('drawBtn');
+            if(!confirmD) { resetBtns(); confirmD = true; b.innerText = "Sure?"; b.classList.add('btn-confirm'); }
+            else showEnd("DRAW", "By Agreement");
+        }
+
+        function showEnd(s, w) {
+            clearInterval(interval); s_end.play();
+            document.getElementById('status').innerText = s;
+            document.getElementById('winner').innerText = w;
+            document.getElementById('game-over').style.display = 'flex';
+        }
+
+        function resetBtns() {
+            confirmR = confirmD = false;
+            document.getElementById('resignBtn').innerText = "Resign";
+            document.getElementById('resignBtn').classList.remove('btn-confirm');
+            document.getElementById('drawBtn').innerText = "Draw";
+            document.getElementById('drawBtn').classList.remove('btn-confirm');
+        }
+
+        render();
+    </script>
+</body>
+</html>
